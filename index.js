@@ -247,9 +247,92 @@ function addEmployee() {
       });
     });
   });
-};
+}
 
-function addRole() {}
+function addRole() {
+  let query3 =
+    "SELECT roles.title AS roles, roles.salary, department.department_name FROM roles INNER JOIN department ON department.id = roles.department_id;";
+  let query4 = "SELECT department.department_name FROM department";
+
+  connection.query(query3, function (err, res) {
+    if (err) throw err;
+    console.table(res);
+    connection(query4, function (err, res) {
+      if (err) throw err;
+      let listOfDepartments = res;
+      let addRolePropmt = [
+        {
+          name: "add_role",
+          type: "input",
+          message: "Enter employee's role",
+        },
+        {
+          name: "add_salary",
+          type: "input",
+          message: "Enter employee's salary",
+        },
+        {
+          name: "select_department",
+          type: "list",
+          message: "Select employee's designated department",
+          choices: function () {
+            departments = [];
+            for (i = 0; i < listOfDepartments.length; i++) {
+              const rolesID = i + 1;
+              departments.push(
+                rolesID + ": " + listOfDepartments[i].department_name
+              );
+            }
+            departments.unshift("0: EXIT");
+            return departments;
+          },
+        },
+      ];
+      inquirer.prompt(addRolePropmt).then(function (result) {
+        if (result.select_department === "0: EXIT") {
+          userPrompt();
+        } else {
+          console.log(result);
+          let query = "INSERT INTO roles SET ?";
+          connection.query(
+            query,
+            {
+              title: result.add_role,
+              salary: result.add.salary,
+              department_id: parseInt(result.select_department.split(":")[0]),
+            },
+            function (err, res) {
+              if (err) throw err;
+            }
+          );
+
+          let addMorePrompt = [
+            {
+              name: "add_more",
+              type: "list",
+              message: "Would you like to add another role?",
+              choices: ["Yes", "EXIT"],
+            },
+          ];
+          inquirer.prompt(addMorePrompt).then(function (result) {
+            let query =
+              "SELECT roles.id, roles.title AS roles, roles.salary, department.department_name FROM roles INNER JOIN department ON department.id = roles.department_id;";
+
+            connection.query(query, function (err, res) {
+              if (err) throw err;
+              if (result.add_more === "Yes") {
+                addRole();
+              } else if (result.add_more === "EXIT") {
+                console.table(res);
+                userPrompt();
+              }
+            });
+          });
+        }
+      });
+    });
+  });
+}
 
 function addDepartment() {}
 
