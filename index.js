@@ -57,9 +57,31 @@ function userPrompt() {
   });
 }
 
-function displayEmployees() {}
+function displayEmployees() {
+  let query = "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.department_name AS department, employees.manager_id " +
+  "FROM employees " +
+  "JOIN roles ON roles.id = employees.role_id " +
+  "JOIN department ON roles.department_id = department.id " +
+  "ORDER BY employees.id;";
 
-function displayRoles() {}
+  connection.query(query, function (err, res) {
+    if (err) throw err;
+    for(i = 0; i < res.length; i++) {
+      if(res[i].manager_id === 0) {
+        res[i].manager_id = "Null"
+      } else {
+        res[i].manager = res[res[i].manager_id - 1]. first_name + " " + res[res[i].manager_id - 1].last_name;
+      };
+      delete res[i].manager_id;
+    };
+    console.table(res);
+    userPrompt();
+  });
+};
+
+function displayRoles() {
+  let query = "SELECT department.department_name AS departments FROM department;";
+}
 
 function displayDepartment() {}
 
