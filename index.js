@@ -70,7 +70,7 @@ function displayEmployees() {
     if (err) throw err;
     for (i = 0; i < res.length; i++) {
       if (res[i].manager_id === 0) {
-        res[i].manager_id = "Null";
+        res[i].manager_id = "NONE";
       } else {
         res[i].manager =
           res[res[i].manager_id - 1].first_name +
@@ -121,7 +121,7 @@ function addEmployee() {
       if (err) throw err;
       for (i = 0; i < res.length; i++) {
         if (res[i].manager_id === 0) {
-          res[i].manager = " Null";
+          res[i].manager = " NONE";
         } else {
           res[i].manager =
             res[res[i].manager_id - 1].first_name +
@@ -177,7 +177,7 @@ function addEmployee() {
                   listOfManagers[i].last_name
               );
             }
-            managers.unshift("0: Null");
+            managers.unshift("0: NONE");
             manager.unshift("E: EXIT");
             return managers;
           },
@@ -229,7 +229,7 @@ function addEmployee() {
               } else if (result.add_more === "EXIT") {
                 for (i = 0; i < res.length; i++) {
                   if (res[i].manager_id === 0) {
-                    res[i].manager = "Null";
+                    res[i].manager = "NONE";
                   } else {
                     res[i].manager =
                       res[res[i].manager_id - 1].first_name +
@@ -334,8 +334,312 @@ function addRole() {
   });
 }
 
-function addDepartment() {}
+function addDepartment() {
+  let query = "SELECT department.department_name FROM department;";
 
-function removeEmployeee() {}
+  connection.query(query, function (err, res) {
+    if (err) throw err;
+    console.table(res);
+    let addDepartmentPromt = [
+      {
+        name: "add_department",
+        type: "input",
+        message: "Enter new department",
+      },
+    ];
+    inquirer.prompt(addDepartmentPromt).then(function (result) {
+      console.log(result);
+      let query = "INSERT INTO department SET ?";
+      connection.query(
+        query,
+        {
+          department_name: result.add_department,
+        },
+        function (err, res) {
+          if (err) throw err;
+        }
+      );
 
-function quitApp() {}
+      let addMorePrompt = [
+        {
+          name: "add_more",
+          type: "list",
+          message: "Would you like to add another department?",
+          choices: ["Yes", "EXIT"],
+        },
+      ];
+      inquirer.prompt(addMorePrompt).then(function (result) {
+        let query = "SELECT department.department_name FROM department";
+        connection.query(query, function (err, res) {
+          if (err) throw err;
+          if (result.add_more === "Yes") {
+            addDepartment();
+          } else if (result.add_more === "EXIT") {
+            console.table(res);
+            userPrompt();
+          }
+        });
+      });
+    });
+  });
+}
+
+function editEmployee() {
+  let query = "SELECT title FROM roles";
+  let query0 =
+    "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.department_name, employees.manager_id " +
+    "FROM employees " +
+    "JOIN roles ON roles.id = employees.role_id " +
+    "JOIN department ON roles.department_id = department.id " +
+    "ORDER BY employees.id;";
+
+  connection.query(query, function (err, res) {
+    if (err) throw err;
+    let listOfRoles = res;
+    connection.query(query0, function (err, res) {
+      if (err) throw err;
+      for (i = 0; i < res.length; i++) {
+        if (res[i].manager_id === 0) {
+          res[i].manager = "NONE";
+        } else {
+          res[i].manager =
+            res[res[i].manager_id - 1].first_name +
+            " " +
+            res[res[i].manager_id - 1].last_name;
+        }
+        delete res[i].manager_id;
+      }
+      console.table(res);
+      let listOfEmployees = res;
+      let addEmployeePrompt = [
+        {
+          name: "select_employee",
+          type: "list",
+          message: "Select an employee to update/edit",
+          choices: function () {
+            employees = [];
+            for (i = 0; i < listOfEmployees.length; i++) {
+              const managerID = i + 1;
+              employees.push(
+                managerID +
+                  ": " +
+                  listOfEmployees[i].first_name +
+                  " " +
+                  listOfEmployees[i].last_name
+              );
+            }
+            employees.unshift("0: EXIT");
+            return employees;
+          },
+        },
+      ];
+      inquirer.prompt(addEmployeePrompt).then(function (result) {
+        if (result.select_employee === "0: EXIT") {
+          userPrompt();
+        } else {
+          let selectEmployee = result.select_employee.split(":")[0];
+          let promptEmployee = [
+            {
+              name: "select_role",
+              type: "list",
+              message: "Update/edit employee's role",
+              choices: function () {
+                roles = [];
+                for (i = 0; i < listOfRoles.length; i++) {
+                  const rolesID = i + 1;
+                  roles.push(rolesID + ":" + listOfRoles[i].title);
+                }
+                roles.unshift("0: EXIT");
+                return roles;
+              },
+            },
+
+            {
+              name: "select_manager",
+              type: "list",
+              message: "Update/edit employee's manager",
+              choices: function () {
+                managers = [];
+                for (i = 0; i < listOfEmployees.length; i++) {
+                  const managerID = i + 1;
+                  if (
+                    result.select_employee.split(": ")[1] !==
+                    listOfEmployees[i].first_name +
+                      " " +
+                      listOfEmployees[i].last_name
+                  ) {
+                    managers.push(
+                      managerID +
+                        ": " +
+                        listOfEmployees[i].first_name +
+                        " " +
+                        listOfEmployees[i].last_name
+                    );
+                  }
+                }
+                managers.unshift("0: NONE");
+                managers.unshift("E: EXIT");
+                return managers;
+              },
+              when: function (results) {
+                return results.select_role !== "0: EXIT";
+              },
+            },
+          ];
+          inquirer.prompt(promptEmployee).then(function (result) {
+            if (
+              result.select_role === "0: EXIT" ||
+              result.select_manager === "E: EXIT"
+            ) {
+              userPrompt();
+            } else {
+              console.log(result);
+              let query =
+                "UPDATE employees SET ? WHERE employees.id = " + selectEmployee;
+              connection.query(
+                query,
+                {
+                  role_id: parseInt(result.select_role.split(":")[0]),
+                  manager_id: parseInt(result.select_manager.split(":")[0]),
+                },
+                function (err, res) {
+                  if (err) throw err;
+                }
+              );
+              let addMorePrompt = [
+                {
+                  name: "add_more",
+                  type: "list",
+                  message: "Would you like to add another employee?",
+                  choices: ["Yes", "EXIT"],
+                },
+              ];
+              inquirer.prompt(addMorePrompt).then(function (result) {
+                let query =
+                  "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.department_name, employees.manager_id " +
+                  "FROM employees " +
+                  "JOIN roles ON roles.id = employees.role_id " +
+                  "JOIN department ON roles.department_id = department.id " +
+                  "ORDER BY employees.id;";
+
+                connection.query(query, function (err, res) {
+                  if (err) throw err;
+                  if (result.add_more === "Yes") {
+                    updateEmployees();
+                  } else if (result.add_more === "EXIT") {
+                    for (i = 0; i < res.length; i++) {
+                      if (res[i].manager_id === 0) {
+                        res[i].manager = "NONE";
+                      } else {
+                        res[i].manager =
+                          res[res[i].manager_id - 1].first_name +
+                          " " +
+                          res[res[i].manager_id - 1].last_name;
+                      }
+                      delete res[i].manager_id;
+                    }
+                    console.table(res);
+                    userPrompt();
+                  }
+                });
+              });
+            }
+          });
+        }
+      });
+    });
+  });
+}
+
+function removeEmployeee() {
+  let query =
+    "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
+  connection.query(query, function (err, res) {
+    if (err) throw err;
+    for (i = 0; i < res.length; i++) {
+      res[i].employee = res[i].first_name + " " + res[i].last_name;
+      delete res[i].first_name;
+      delete res[i].last_name;
+    }
+    console.table(res);
+    let listOfEmployees = res;
+    let addEmployeePrompt = [
+      {
+        name: "select_employee",
+        type: "list",
+        message: "Remove employee",
+        choices: function () {
+          employees = [];
+          for (i = 0; i < employeeList.length; i++) {
+            employees.push(
+              employeeList[i].id + ": " + employeeList[i].employee
+            );
+          }
+          employees.unshift("0: EXIT");
+          return employees;
+        },
+      },
+
+      {
+        name: "confirm_removal",
+        type: "list",
+        message: function (results) {
+          return (
+            "Are you sure you want to remove this employee?" +
+            results.select_employee.split(": ")[1]
+          );
+        },
+        choices: ["YES", "NO"],
+        when: function (results) {
+          return results.select_employee !== "0: EXIT";
+        },
+      },
+    ];
+    inquirer.prompt(addEmployeePrompt).then(function (result) {
+      if (result.select_employee === "0: EXIT") {
+        userPrompt();
+      } else if (result.confirm_removal === "NO") {
+        removeEmployeee();
+      } else {
+        let query =
+          "DELETE FROM employees WHERE employees.id =" +
+          result.select_employee.split(": ")[0];
+        connection.query(query, function (err, res) {
+          if (err) throw err;
+        });
+        let addMorePrompt = [
+          {
+            name: "add_more",
+            type: "list",
+            message: "Would you like to remove more employees?",
+            choices: ["YES", "EXIT"],
+          },
+        ];
+        inquirer.prompt(addMorePrompt).then(function (result) {
+          let query =
+            "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
+
+          connection.query(query, function (err, res) {
+            if (err) throw err;
+            for (i = 0; i < res.length; i++) {
+              res[i].employee = res[i].first_name + " " + res[i].last_name;
+              delete res[i].first_name;
+              delete res[i].last_name;
+            }
+            if (result.add_more === "YES") {
+              removeEmployeee();
+            } else if (result.add_more === "EXIT") {
+              console.table(res);
+              userPrompt();
+            }
+          });
+        });
+      }
+    });
+  });
+}
+
+function quitApp() {
+  connection.end();
+  console.log("Good Bye");
+}
